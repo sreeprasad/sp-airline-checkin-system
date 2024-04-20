@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -35,12 +37,8 @@ func main() {
 		fmt.Printf("Welcome %s to SP Airlines\n", user.Name)
 	}
 
-	fmt.Printf("enter the seat id: ")
-	var seatID int
-	_, err = fmt.Scanln(&seatID)
-	if err != nil {
-		log.Fatalf("Invalid input for seat ID: %v", err)
-	}
+	rand.Seed(time.Now().UnixNano())
+	seatID := rand.Intn(120)
 
 	seat, err := getSeat(db, seatID)
 	if err != nil {
