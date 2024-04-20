@@ -1,4 +1,4 @@
-package main
+package sp_airlines
 
 import (
 	"database/sql"
@@ -39,7 +39,7 @@ type Seat struct {
 	UserID uint
 }
 
-func clearAllContents(db *sql.DB) {
+func ClearAllContents(db *sql.DB) {
 	tables := []string{"seats", "users", "trips", "flights", "airlines"}
 	for _, table := range tables {
 		_, err := db.Exec(fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE;", table))
@@ -50,7 +50,7 @@ func clearAllContents(db *sql.DB) {
 	fmt.Println("All tables truncated successfully.")
 }
 
-func initializeDB(db *sql.DB) {
+func InitializeDB(db *sql.DB) {
 	_, err := db.Exec(`INSERT INTO airlines (name) VALUES ('Air India') RETURNING id;`)
 	if err != nil {
 		log.Fatalf("Failed to insert airline: %v", err)
@@ -92,7 +92,11 @@ func initializeDB(db *sql.DB) {
 			log.Fatalf("Failed to query user ID: %v", err)
 		}
 
-		seatName := fmt.Sprintf("Seat %d", i+1)
+		seatCode := (i - 1) % 5
+		seatRow := seatCode + 1
+		seatLetter := rune('A' + (i % 5))
+		seatName := fmt.Sprintf("%d-%c", seatRow, seatLetter)
+
 		_, err = db.Exec(`INSERT INTO seats (name, trip_id, user_id) VALUES ($1, $2, $3);`, seatName, flightID, userID)
 		if err != nil {
 			log.Fatalf("Failed to insert seat: %v", err)
@@ -102,30 +106,28 @@ func initializeDB(db *sql.DB) {
 	fmt.Println("Data insertion complete")
 }
 
-func ensureAllUsersExist(db *sql.DB) {
-	var noNameCount int
-	sqlStatement := `SELECT COUNT(*) FROM users WHERE name IS NULL;`
-	row := db.QueryRow(sqlStatement)
-	err := row.Scan(&noNameCount)
+func ShowAllSeats(db *sql.DB) {
+	sqlStatement := `SELECT id, name, trip_id, user_id FROM seats;`
+	rows, err := db.Query(sqlStatement)
 	if err != nil {
-		log.Fatalf("Error querying for users without names: %v", err)
+		log.Fatalf("Failed to execute query: %v", err)
 	}
-	if noNameCount > 0 {
-		log.Printf("There are %d users with no name.", noNameCount)
-	} else {
-		log.Println("All users have names.")
-	}
-}
+	defer rows.Close()
 
-func main() {
-	connStr := "host=localhost port=5435 user=user4 dbname=mydatabase4 password=password4 sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
+	fmt.Println("ID | Name | Trip ID | User ID")
+	for rows.Next() {
+		var id int
+		var name string
+		var tripID int
+		var userID int
+		err = rows.Scan(&id, &name, &tripID, &userID)
+		if err != nil {
+			log.Fatalf("Failed to read row: %v", err)
+		}
+		fmt.Printf("%d | %s | %d | %d\n", id, name, tripID, userID)
+	}
+	err = rows.Err()
 	if err != nil {
-		log.Fatalf("Error opening database: %v", err)
+		log.Fatalf("Error reading rows: %v", err)
 	}
-	defer db.Close()
-
-	clearAllContents(db)
-	initializeDB(db)
-	ensureAllUsersExist(db)
 }
