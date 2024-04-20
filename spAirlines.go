@@ -1,11 +1,12 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/bxcodec/faker/v3"
-	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
 )
 
@@ -38,61 +39,93 @@ type Seat struct {
 	UserID uint
 }
 
-func initializeDB(db *gorm.DB) {
-	db.AutoMigrate(&Airline{}, &Flight{}, &Trip{}, &User{}, &Seat{})
+func clearAllContents(db *sql.DB) {
+	tables := []string{"seats", "users", "trips", "flights", "airlines"}
+	for _, table := range tables {
+		_, err := db.Exec(fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE;", table))
+		if err != nil {
+			log.Fatalf("Failed to truncate table %s: %v", table, err)
+		}
+	}
+	fmt.Println("All tables truncated successfully.")
+}
 
-	airline := Airline{Name: "Air India"}
-	if err := db.Create(&airline).Error; err != nil {
-		fmt.Printf("Error creating airline: %v\n", err)
-		return
+func initializeDB(db *sql.DB) {
+	_, err := db.Exec(`INSERT INTO airlines (name) VALUES ('Air India') RETURNING id;`)
+	if err != nil {
+		log.Fatalf("Failed to insert airline: %v", err)
 	}
 
-	flight := Flight{Name: "AIR_01", AirlineID: airline.ID}
-	if err := db.Create(&flight).Error; err != nil {
-		fmt.Printf("Error creating flight: %v\n", err)
-		return
+	var airlineID int
+	err = db.QueryRow(`SELECT id FROM airlines WHERE name = 'Air India';`).Scan(&airlineID)
+	if err != nil {
+		log.Fatalf("Failed to query airline ID: %v", err)
+	}
+
+	_, err = db.Exec(`INSERT INTO flights (name, airline_id) VALUES ('AIR_01', $1);`, airlineID)
+	if err != nil {
+		log.Fatalf("Failed to insert flight: %v", err)
+	}
+
+	var flightID int
+	err = db.QueryRow(`SELECT id FROM flights WHERE name = 'AIR_01';`).Scan(&flightID)
+	if err != nil {
+		log.Fatalf("Failed to query flight ID: %v", err)
 	}
 
 	specificTime := time.Date(2024, time.April, 19, 21, 0, 0, 0, time.UTC)
-	trip := Trip{FlightID: flight.ID, FlightTime: specificTime}
-	if err := db.Create(&trip).Error; err != nil {
-		fmt.Printf("Error creating trip: %v\n", err)
-		return
+	_, err = db.Exec(`INSERT INTO trips (flight_id, flight_time) VALUES ($1, $2);`, flightID, specificTime)
+	if err != nil {
+		log.Fatalf("Failed to insert trip: %v", err)
 	}
 
 	for i := 0; i < 120; i++ {
-		user := User{Name: faker.Name()}
-		if err := db.Create(&user).Error; err != nil {
-			fmt.Printf("Error creating user: %v\n", err)
-			return
+		userName := faker.Name()
+		_, err = db.Exec(`INSERT INTO users (name) VALUES ($1) RETURNING id;`, userName)
+		if err != nil {
+			log.Fatalf("Failed to insert user: %v", err)
 		}
 
-		seat := Seat{Name: fmt.Sprintf("Seat %d", i+1), TripID: trip.ID, UserID: user.ID}
-		if err := db.Create(&seat).Error; err != nil {
-			fmt.Printf("Error creating seat: %v\n", err)
-			return
+		var userID int
+		err = db.QueryRow(`SELECT id FROM users WHERE name = $1;`, userName).Scan(&userID)
+		if err != nil {
+			log.Fatalf("Failed to query user ID: %v", err)
+		}
+
+		seatName := fmt.Sprintf("Seat %d", i+1)
+		_, err = db.Exec(`INSERT INTO seats (name, trip_id, user_id) VALUES ($1, $2, $3);`, seatName, flightID, userID)
+		if err != nil {
+			log.Fatalf("Failed to insert seat: %v", err)
 		}
 	}
+
 	fmt.Println("Data insertion complete")
 }
 
-func main() {
-	db, err := gorm.Open("postgres", "host=localhost port=5435 user=user4 dbname=mydatabase4 password=password4 sslmode=disable")
+func ensureAllUsersExist(db *sql.DB) {
+	var noNameCount int
+	sqlStatement := `SELECT COUNT(*) FROM users WHERE name IS NULL;`
+	row := db.QueryRow(sqlStatement)
+	err := row.Scan(&noNameCount)
 	if err != nil {
-		panic("failed to connect to database")
+		log.Fatalf("Error querying for users without names: %v", err)
 	}
-	defer db.Close()
-	clearAllContents(db)
-	initializeDB(db)
-
+	if noNameCount > 0 {
+		log.Printf("There are %d users with no name.", noNameCount)
+	} else {
+		log.Println("All users have names.")
+	}
 }
 
-func clearAllContents(db *gorm.DB) {
-	tables := []string{"seats", "users", "trips", "flights", "airlines"}
-
-	for _, table := range tables {
-		db.Exec(fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE;", table))
+func main() {
+	connStr := "host=localhost port=5435 user=user4 dbname=mydatabase4 password=password4 sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
 	}
+	defer db.Close()
 
-	fmt.Println("All tables truncated successfully.")
+	clearAllContents(db)
+	initializeDB(db)
+	ensureAllUsersExist(db)
 }
