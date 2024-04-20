@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+echo "creating schema"
+
 # Connect to the specified database and create a table if it does not exist
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "mydatabase4" <<-EOSQL
     CREATE TABLE IF NOT EXISTS public.airlines (
@@ -34,11 +36,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "mydatabase4" <<-EO
     );
 
 
-    CREATE TABLE IF NOT EXISTS public.seats (
+    CREATE TABLE public.seats (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         trip_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
+        user_id INTEGER, 
 
         CONSTRAINT fk_trip
             FOREIGN KEY (trip_id)
@@ -50,5 +52,6 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "mydatabase4" <<-EO
             ON DELETE CASCADE
     );
 
+    
 EOSQL
 

@@ -36,7 +36,7 @@ type Seat struct {
 	ID     uint
 	Name   string
 	TripID uint
-	UserID uint
+	UserID sql.NullInt64
 }
 
 func ClearAllContents(db *sql.DB) {
@@ -51,6 +51,9 @@ func ClearAllContents(db *sql.DB) {
 }
 
 func InitializeDB(db *sql.DB) {
+
+	ClearAllContents(db)
+
 	_, err := db.Exec(`INSERT INTO airlines (name) VALUES ('Air India') RETURNING id;`)
 	if err != nil {
 		log.Fatalf("Failed to insert airline: %v", err)
@@ -79,7 +82,24 @@ func InitializeDB(db *sql.DB) {
 		log.Fatalf("Failed to insert trip: %v", err)
 	}
 
+	tripID := 1
 	for i := 0; i < 120; i++ {
+
+		userName := faker.Name()
+		_, err = db.Exec(`INSERT INTO users (name) VALUES ($1) RETURNING id;`, userName)
+		if err != nil {
+			log.Fatalf("Failed to insert user: %v", err)
+		}
+
+		seatRow := i/5 + 1
+		seatLetter := rune('A' + (i % 5))
+		seatName := fmt.Sprintf("%d-%c", seatRow, seatLetter)
+		_, err := db.Exec(`INSERT INTO seats (name, trip_id) VALUES ($1, $2);`, seatName, tripID)
+		if err != nil {
+			log.Fatalf("Failed to insert seat: %v", err)
+		}
+	}
+	/* for i := 0; i < 120; i++ {
 		userName := faker.Name()
 		_, err = db.Exec(`INSERT INTO users (name) VALUES ($1) RETURNING id;`, userName)
 		if err != nil {
@@ -101,9 +121,107 @@ func InitializeDB(db *sql.DB) {
 		if err != nil {
 			log.Fatalf("Failed to insert seat: %v", err)
 		}
-	}
+	} */
 
 	fmt.Println("Data insertion complete")
+}
+
+func ClearAllUsersFromSeats(db *sql.DB, tripID int) {
+	_, err := db.Exec("TRUNCATE TABLE seats RESTART IDENTITY CASCADE;")
+	if err != nil {
+		log.Fatalf("Failed to truncate seat: %v", err)
+	}
+	for i := 0; i < 120; i++ {
+		seatRow := i/5 + 1
+		seatLetter := rune('A' + (i % 5))
+		seatName := fmt.Sprintf("%d-%c", seatRow, seatLetter)
+		_, err = db.Exec(`INSERT INTO seats (name, trip_id) VALUES ($1, $2);`, seatName, tripID)
+		if err != nil {
+			log.Fatalf("Failed to insert seat: %v", err)
+		}
+	}
+}
+
+func PrintAllSeats(db *sql.DB) {
+	seats, _ := GetAllSeats(db)
+	for i := 0; i < 5; i++ {
+		var start = i
+		for j := 0; j < 24; j++ {
+			index := start + j*5
+			if index >= len(seats) {
+				fmt.Println("Index out of range, not enough seats to display.")
+				return
+			}
+			seat := seats[index]
+
+			seatCode := "."
+			if seat.UserID.Valid {
+				seatCode = "X"
+			}
+			fmt.Printf("%s ", seatCode)
+
+		}
+
+		if i == 1 {
+			fmt.Println()
+		}
+		fmt.Println()
+	}
+
+}
+
+func GetSeatByID(db *sql.DB, seatID int) (Seat, error) {
+	var seat Seat
+	sqlStatement := `SELECT * FROM seats where id = $1;`
+	err := db.QueryRow(sqlStatement, seatID).Scan(&seat.ID, &seat.Name, &seat.TripID, &seat.UserID)
+	if err != nil {
+		log.Fatalf("Could not get new seat: %v", err)
+		return Seat{}, err
+	}
+	return seat, nil
+}
+
+func GetAllSeats(db *sql.DB) ([]Seat, error) {
+	seats := make([]Seat, 0)
+	sqlStatement := `SELECT * FROM seats ORDER by id;`
+	rows, err := db.Query(sqlStatement)
+	if err != nil {
+		log.Fatalf("Failed to execute query: %v", err)
+		return nil, err
+	}
+	for rows.Next() {
+		var seat Seat
+		rows.Scan(&seat.ID, &seat.Name, &seat.TripID, &seat.UserID)
+		seats = append(seats, seat)
+	}
+	return seats, nil
+}
+
+func GetUser(db *sql.DB, userID int) (User, error) {
+	var user User
+	sqlStatement := `SELECT name,id FROM users where id = $1;`
+	err := db.QueryRow(sqlStatement, userID).Scan(&user.Name, &user.ID)
+	if err != nil {
+		log.Fatalf("Could not get new user: %v", err)
+		return User{}, err
+	}
+	return user, nil
+}
+
+func GetAllUsers(db *sql.DB) ([]User, error) {
+	users := make([]User, 0)
+	sqlStatement := `SELECT * FROM users ORDER by id;`
+	rows, err := db.Query(sqlStatement)
+	if err != nil {
+		log.Fatalf("Failed to execute query: %v", err)
+		return nil, err
+	}
+	for rows.Next() {
+		var user User
+		rows.Scan(&user.ID, &user.Name)
+		users = append(users, user)
+	}
+	return users, nil
 }
 
 func ShowAllSeats(db *sql.DB) {

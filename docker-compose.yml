@@ -12,7 +12,7 @@ services:
     volumes:
       - db1_data:/var/lib/postgresql/data
       - ./postgres-init/01-create_role.sh:/docker-entrypoint-initdb.d/01-create_role.sh
-      - ./postgres-init/02-create_airlines_schema.sh:/docker-entrypoint-initdb.d/02-create_airlines_schema.sh
+      - ./postgres-init/03-create_airlines_schema.sh:/docker-entrypoint-initdb.d/03-create_airlines_schema.sh
 
 volumes:
   db1_data:

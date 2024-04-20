@@ -20,7 +20,6 @@ func main() {
 	}
 	defer db.Close()
 
-	airlines.ClearAllContents(db)
 	airlines.InitializeDB(db)
 
 	fmt.Printf("enter the user id: ")
@@ -30,7 +29,7 @@ func main() {
 		log.Fatalf("Invalid input for user ID: %v", err)
 	}
 
-	user, err := getUser(db, userID)
+	user, err := airlines.GetUser(db, userID)
 	if err != nil {
 		log.Fatalf("Invalid input for user ID: %v", err)
 	} else {
@@ -38,9 +37,9 @@ func main() {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	seatID := rand.Intn(120)
+	seatID := rand.Intn(120) + 1
 
-	seat, err := getSeat(db, seatID)
+	seat, err := airlines.GetSeatByID(db, seatID)
 	if err != nil {
 		log.Fatalf("Invalid input for seat ID: %v", err)
 	}
@@ -52,29 +51,8 @@ func main() {
 		log.Fatalf("Failed to add user to seat: %v", err)
 	}
 
-	fmt.Printf("User %s was added to seat %s \n", user.Name, seat.Name)
-}
-
-func getUser(db *sql.DB, userID int) (airlines.User, error) {
-	var user airlines.User
-	sqlStatement := `SELECT name,id FROM users where id = $1;`
-	err := db.QueryRow(sqlStatement, userID).Scan(&user.Name, &user.ID)
-	if err != nil {
-		log.Fatalf("Could not insert new post: %v", err)
-		return airlines.User{}, err
-	}
-	return user, nil
-}
-
-func getSeat(db *sql.DB, seatID int) (airlines.Seat, error) {
-	var seat airlines.Seat
-	sqlStatement := `SELECT * FROM seats where id = $1;`
-	err := db.QueryRow(sqlStatement, seatID).Scan(&seat.ID, &seat.Name, &seat.TripID, &seat.UserID)
-	if err != nil {
-		log.Fatalf("Could not insert new post: %v", err)
-		return airlines.Seat{}, err
-	}
-	return seat, nil
+	//fmt.Printf("User %s was added to seat %s \n", user.Name, seat.Name)
+	airlines.PrintAllSeats(db)
 }
 
 func addTheGodDamUser(db *sql.DB, user airlines.User, seat airlines.Seat, tripID int) error {
