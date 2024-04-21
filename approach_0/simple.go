@@ -20,6 +20,7 @@ func main() {
 	defer db.Close()
 
 	airlines.InitializeDBRecords(db)
+
 	fmt.Printf("enter the user id: ")
 	var userID int
 	_, err = fmt.Scanln(&userID)
@@ -27,7 +28,12 @@ func main() {
 		log.Fatalf("Invalid input for user ID: %v", err)
 	}
 
-	user, err := airlines.GetUser(db, userID)
+	transaction, err := db.Begin()
+	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
+	}
+
+	user, err := airlines.GetUser(transaction, userID)
 	if err != nil {
 		log.Fatalf("Invalid input for user ID: %v", err)
 	} else {
@@ -41,36 +47,26 @@ func main() {
 		log.Fatalf("Invalid input for seat ID: %v", err)
 	}
 
-	seat, err := airlines.GetSeatByID(db, seatID)
+	seat, err := airlines.GetSeatByID(transaction, seatID)
 	if err != nil {
 		log.Fatalf("Invalid input for seat ID: %v", err)
 	}
 
 	tripID := 1
 
-	err = addTheGodDamUser(db, user, seat, tripID)
+	sqlStatement := `UPDATE seats SET user_id = $1, trip_id = $2 WHERE id = $3;`
+	_, err = transaction.Exec(sqlStatement, seat.ID, tripID, user.ID)
+
 	if err != nil {
-		log.Fatalf("Failed to add user to seat: %v", err)
+		transaction.Rollback()
+		fmt.Errorf("execute insert: %w", err)
+	}
+
+	if err := transaction.Commit(); err != nil {
+		fmt.Errorf("commit transaction: %w", err)
 	}
 
 	fmt.Printf("User %s was added to seat %s \n", user.Name, seat.Name)
 	airlines.PrettyPrintAllSeats(db)
 
-}
-
-func addTheGodDamUser(db *sql.DB, user airlines.User, seat airlines.Seat, tripID int) error {
-	transaction, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
-	}
-	sqlStatement := `UPDATE seats SET user_id = $1, trip_id = $2 WHERE id = $3;`
-	_, err = transaction.Exec(sqlStatement, seat.ID, tripID, user.ID)
-	if err != nil {
-		transaction.Rollback()
-		return fmt.Errorf("execute insert: %w", err)
-	}
-	if err := transaction.Commit(); err != nil {
-		return fmt.Errorf("commit transaction: %w", err)
-	}
-	return nil
 }

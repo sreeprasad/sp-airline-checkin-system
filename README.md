@@ -19,6 +19,7 @@ docker-compose up --build
 Get the user and seat from command line and add user to seat.Here there is no
 check if the seat was already occupied or not. A seat that is already occupied
 by a user can be overrwritten by another user.
+![Optional Alt Text](screenshots/approach_0.jpg)
 
 ## Approach two
 

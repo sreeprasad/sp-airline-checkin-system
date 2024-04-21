@@ -252,10 +252,10 @@ func GetAllSeats(db *sql.DB) ([]Seat, error) {
 	return seats, nil
 }
 
-func GetUser(db *sql.DB, userID int) (User, error) {
+func GetUser(transaction *sql.Tx, userID int) (User, error) {
 	var user User
 	sqlStatement := `SELECT name,id FROM users where id = $1;`
-	err := db.QueryRow(sqlStatement, userID).Scan(&user.Name, &user.ID)
+	err := transaction.QueryRow(sqlStatement, userID).Scan(&user.Name, &user.ID)
 	if err != nil {
 		log.Fatalf("Could not get new user: %v", err)
 		return User{}, err

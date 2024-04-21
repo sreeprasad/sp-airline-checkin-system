@@ -54,7 +54,6 @@ func main() {
 				transaction.Rollback()
 				log.Printf("Failed to execute update: %v", err)
 			}
-
 			if err = transaction.Commit(); err != nil {
 				log.Printf("Failed to commit transaction: %v", err)
 			}
