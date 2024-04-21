@@ -33,7 +33,25 @@ func main() {
 		go func(index int, user *airlines.User) {
 			defer wg.Done()
 
-			addTheGodDamUser(db, *user, tripID)
+			transaction, err := db.Begin()
+			if err != nil {
+				log.Printf("Failed to begin transaction: %v", err)
+			}
+
+			seat, err := airlines.GetAvailableSeatWithUpdate(transaction, tripID)
+			if err != nil {
+				log.Fatalf("Invalid input for seat ID: %v", err)
+			}
+
+			sqlStatement := `UPDATE seats SET user_id = $1, trip_id = $2 WHERE id = $3;`
+			if _, err = transaction.Exec(sqlStatement, user.ID, tripID, seat.ID); err != nil {
+				transaction.Rollback()
+				log.Printf("Failed to execute update: %v", err)
+			}
+
+			if err = transaction.Commit(); err != nil {
+				log.Printf("Failed to commit transaction: %v", err)
+			}
 			//fmt.Printf("%d: User %s was added to seat %s \n", index, user.Name, seat.Name)
 
 		}(idx, &users[idx])
@@ -42,30 +60,4 @@ func main() {
 
 	airlines.PrintAllSeats(db)
 
-}
-
-func addTheGodDamUser(db *sql.DB, user airlines.User, tripID int) error {
-
-	transaction, err := db.Begin()
-	if err != nil {
-		log.Printf("Failed to begin transaction: %v", err)
-		return err
-	}
-
-	seat, err := airlines.GetAvailableSeatWithUpdate(transaction, tripID)
-	if err != nil {
-		log.Fatalf("Invalid input for seat ID: %v", err)
-	}
-
-	sqlStatement := `UPDATE seats SET user_id = $1, trip_id = $2 WHERE id = $3;`
-	if _, err = transaction.Exec(sqlStatement, user.ID, tripID, seat.ID); err != nil {
-		transaction.Rollback()
-		log.Printf("Failed to execute update: %v", err)
-		return err
-	}
-	if err = transaction.Commit(); err != nil {
-		log.Printf("Failed to commit transaction: %v", err)
-		return err
-	}
-	return nil
 }
