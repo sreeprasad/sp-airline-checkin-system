@@ -14,5 +14,15 @@ services:
       - ./postgres-init/01-create_role.sh:/docker-entrypoint-initdb.d/01-create_role.sh
       - ./postgres-init/03-create_airlines_schema.sh:/docker-entrypoint-initdb.d/03-create_airlines_schema.sh
 
+  pgbouncer:
+    image: edoburu/pgbouncer
+    volumes:
+      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini
+      - ./userlist.txt:/etc/pgbouncer/userlist.txt
+    ports:
+      - "6432:5432"
+    depends_on:
+      - db1
+
 volumes:
   db1_data:

@@ -50,7 +50,7 @@ func ClearAllContents(db *sql.DB) {
 	fmt.Println("All tables truncated successfully.")
 }
 
-func InitializeDB(db *sql.DB) {
+func InitializeDBRecords(db *sql.DB) {
 
 	ClearAllContents(db)
 
@@ -168,6 +168,18 @@ func PrintAllSeats(db *sql.DB) {
 		fmt.Println()
 	}
 
+}
+
+func GetAvailableSeatWithUpdate(db *sql.Tx, tripID int) (Seat, error) {
+	var seat Seat
+	sqlStatement := `SELECT id,name,trip_id, user_id FROM seats where trip_id= $1
+											and user_id is null order by id limit 1 for update;`
+	err := db.QueryRow(sqlStatement, tripID).Scan(&seat.ID, &seat.Name, &seat.TripID, &seat.UserID)
+	if err != nil {
+		log.Fatalf("Could not get new seat: %v", err)
+		return Seat{}, err
+	}
+	return seat, nil
 }
 
 func GetAvailableSeat(db *sql.DB, tripID int) (Seat, error) {

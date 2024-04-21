@@ -22,7 +22,7 @@ func main() {
 
 	var tripID = 1
 
-	airlines.InitializeDB(db)
+	airlines.InitializeDBRecords(db)
 
 	users, err := airlines.GetAllUsers(db)
 	if err != nil {

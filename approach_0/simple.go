@@ -18,7 +18,7 @@ func main() {
 	}
 	defer db.Close()
 
-	airlines.InitializeDB(db)
+	airlines.InitializeDBRecords(db)
 	fmt.Printf("enter the user id: ")
 	var userID int
 	_, err = fmt.Scanln(&userID)
