@@ -3,7 +3,6 @@ set -e
 
 echo "creating schema"
 
-# Connect to the specified database and create a table if it does not exist
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "mydatabase4" <<-EOSQL
     CREATE TABLE IF NOT EXISTS public.airlines (
         id SERIAL PRIMARY KEY,

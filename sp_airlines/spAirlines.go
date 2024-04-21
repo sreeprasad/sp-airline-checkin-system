@@ -185,10 +185,10 @@ func GetAvailableSeat(transaction *sql.Tx, tripID int) (Seat, error) {
 	return seat, nil
 }
 
-func GetSeatByID(db *sql.DB, seatID int) (Seat, error) {
+func GetSeatByID(transaction *sql.Tx, seatID int) (Seat, error) {
 	var seat Seat
 	sqlStatement := `SELECT * FROM seats where id = $1;`
-	err := db.QueryRow(sqlStatement, seatID).Scan(&seat.ID, &seat.Name, &seat.TripID, &seat.UserID)
+	err := transaction.QueryRow(sqlStatement, seatID).Scan(&seat.ID, &seat.Name, &seat.TripID, &seat.UserID)
 	if err != nil {
 		log.Fatalf("Could not get new seat: %v", err)
 		return Seat{}, err

@@ -37,15 +37,27 @@ func main() {
 	for idx := range users {
 		go func(index int, user *airlines.User) {
 			defer wg.Done()
+			transaction, err := db.Begin()
+			if err != nil {
+				log.Printf("Failed to begin transaction: %v", err)
+			}
 
 			seatID := rand.Intn(120) + 1
 
-			seat, err := airlines.GetSeatByID(db, seatID)
+			seat, err := airlines.GetSeatByID(transaction, seatID)
 			if err != nil {
 				log.Fatalf("Invalid input for seat ID: %v", err)
 			}
-			addTheGodDamUser(db, *user, seat, tripID)
-			//fmt.Printf("%d: User %s was added to seat %s \n", index, user.Name, seat.Name)
+
+			sqlStatement := `UPDATE seats SET user_id = $1, trip_id = $2 WHERE id = $3;`
+			if _, err = transaction.Exec(sqlStatement, user.ID, tripID, seat.ID); err != nil {
+				transaction.Rollback()
+				log.Printf("Failed to execute update: %v", err)
+			}
+
+			if err = transaction.Commit(); err != nil {
+				log.Printf("Failed to commit transaction: %v", err)
+			}
 
 		}(idx, &users[idx])
 	}
