@@ -170,6 +170,18 @@ func PrintAllSeats(db *sql.DB) {
 
 }
 
+func GetAvailableSeat(db *sql.DB, tripID int) (Seat, error) {
+	var seat Seat
+	sqlStatement := `SELECT id,name,trip_id, user_id FROM seats where trip_id= $1
+											and user_id is null order by id limit 1;`
+	err := db.QueryRow(sqlStatement, tripID).Scan(&seat.ID, &seat.Name, &seat.TripID, &seat.UserID)
+	if err != nil {
+		log.Fatalf("Could not get new seat: %v", err)
+		return Seat{}, err
+	}
+	return seat, nil
+}
+
 func GetSeatByID(db *sql.DB, seatID int) (Seat, error) {
 	var seat Seat
 	sqlStatement := `SELECT * FROM seats where id = $1;`
