@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"sync"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -31,6 +32,9 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(len(users))
 	for idx := range users {
+		// adding this sleep reduces thread contenion on the seat and all seats
+		// will be filled.
+		//time.Sleep(10 * time.Millisecond)
 		go func(index int, user *airlines.User) {
 			defer wg.Done()
 
