@@ -58,6 +58,7 @@ func main() {
 	}
 	wg.Wait()
 
-	airlines.PrintAllSeats(db)
+	airlines.PrintUserSeats(db)
+	airlines.PrettyPrintAllSeats(db)
 
 }

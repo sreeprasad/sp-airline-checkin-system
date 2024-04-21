@@ -54,7 +54,7 @@ func main() {
 	}
 
 	fmt.Printf("User %s was added to seat %s \n", user.Name, seat.Name)
-	airlines.PrintAllSeats(db)
+	airlines.PrettyPrintAllSeats(db)
 
 }
 

@@ -142,12 +142,12 @@ func ClearAllUsersFromSeats(db *sql.DB, tripID int) {
 	}
 }
 
-func PrintAllSeats(db *sql.DB) {
+func PrettyPrintAllSeats(db *sql.DB) {
 	seats, _ := GetAllSeats(db)
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 6; i++ {
 		var start = i
-		for j := 0; j < 24; j++ {
-			index := start + j*5
+		for j := 0; j < 20; j++ {
+			index := start + j*6
 			if index >= len(seats) {
 				fmt.Println("Index out of range, not enough seats to display.")
 				return
@@ -162,7 +162,7 @@ func PrintAllSeats(db *sql.DB) {
 
 		}
 
-		if i == 1 {
+		if i == 2 {
 			fmt.Println()
 		}
 		fmt.Println()
@@ -203,6 +203,46 @@ func GetSeatByID(db *sql.DB, seatID int) (Seat, error) {
 		return Seat{}, err
 	}
 	return seat, nil
+}
+
+func PrintUserSeats(db *sql.DB) {
+	fmt.Println("-----")
+	sqlStatement := `
+        SELECT s.id, s.name, s.trip_id, s.user_id, u.id, u.name 
+        FROM seats s 
+        LEFT JOIN users u ON s.user_id = u.id 
+        WHERE s.user_id IS NOT NULL
+        ORDER BY s.id;
+    `
+	rows, err := db.Query(sqlStatement)
+	if err != nil {
+		log.Printf("Failed to execute query: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var seat Seat
+		var user User
+		var userID sql.NullInt64
+		var userName sql.NullString
+
+		err := rows.Scan(&seat.ID, &seat.Name, &seat.TripID, &userID, &user.ID, &userName)
+		if err != nil {
+			log.Printf("Failed to scan row: %v", err)
+		}
+
+		if userID.Valid {
+			user.ID = uint(userID.Int64)
+			user.Name = userName.String
+			fmt.Printf("UserID: %d Name: %s Seat: %s\n", user.ID, user.Name, seat.Name)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error during rows iteration: %v", err)
+	}
+	fmt.Println("-----")
+
 }
 
 func GetAllSeats(db *sql.DB) ([]Seat, error) {

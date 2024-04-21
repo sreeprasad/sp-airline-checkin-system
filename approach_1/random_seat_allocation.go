@@ -53,7 +53,7 @@ func main() {
 	}
 
 	//fmt.Printf("User %s was added to seat %s \n", user.Name, seat.Name)
-	airlines.PrintAllSeats(db)
+	airlines.PrettyPrintAllSeats(db)
 }
 
 func addTheGodDamUser(db *sql.DB, user airlines.User, seat airlines.Seat, tripID int) error {
