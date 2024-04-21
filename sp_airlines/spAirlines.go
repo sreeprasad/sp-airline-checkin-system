@@ -99,29 +99,6 @@ func InitializeDBRecords(db *sql.DB) {
 			log.Fatalf("Failed to insert seat: %v", err)
 		}
 	}
-	/* for i := 0; i < 120; i++ {
-		userName := faker.Name()
-		_, err = db.Exec(`INSERT INTO users (name) VALUES ($1) RETURNING id;`, userName)
-		if err != nil {
-			log.Fatalf("Failed to insert user: %v", err)
-		}
-
-		var userID int
-		err = db.QueryRow(`SELECT id FROM users WHERE name = $1;`, userName).Scan(&userID)
-		if err != nil {
-			log.Fatalf("Failed to query user ID: %v", err)
-		}
-
-		seatCode := (i - 1) % 5
-		seatRow := seatCode + 1
-		seatLetter := rune('A' + (i % 5))
-		seatName := fmt.Sprintf("%d-%c", seatRow, seatLetter)
-
-		_, err = db.Exec(`INSERT INTO seats (name, trip_id, user_id) VALUES ($1, $2, $3);`, seatName, flightID, userID)
-		if err != nil {
-			log.Fatalf("Failed to insert seat: %v", err)
-		}
-	} */
 
 	fmt.Println("Data insertion complete")
 }
@@ -168,6 +145,20 @@ func PrettyPrintAllSeats(db *sql.DB) {
 		fmt.Println()
 	}
 
+	fmt.Println()
+
+}
+
+func GetAvailableSeatWithUpdateSkipLockedRows(db *sql.Tx, tripID int) (Seat, error) {
+	var seat Seat
+	sqlStatement := `SELECT id,name,trip_id, user_id FROM seats where trip_id= $1
+											and user_id is null order by id limit 1 for update skip locked;`
+	err := db.QueryRow(sqlStatement, tripID).Scan(&seat.ID, &seat.Name, &seat.TripID, &seat.UserID)
+	if err != nil {
+		log.Fatalf("Could not get new seat: %v", err)
+		return Seat{}, err
+	}
+	return seat, nil
 }
 
 func GetAvailableSeatWithUpdate(db *sql.Tx, tripID int) (Seat, error) {

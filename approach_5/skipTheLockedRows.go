@@ -40,7 +40,7 @@ func main() {
 				log.Printf("Failed to begin transaction: %v", err)
 			}
 
-			seat, err := airlines.GetAvailableSeatWithUpdate(transaction, tripID)
+			seat, err := airlines.GetAvailableSeatWithUpdateSkipLockedRows(transaction, tripID)
 			if err != nil {
 				log.Fatalf("Invalid input for seat ID: %v", err)
 			}
